@@ -6,7 +6,7 @@ from cegis import CEGISSolver
 from sygus_parser import parse_file
 
 
-BENCHMARK_DIR = Path("benchmarks/generated")
+BENCHMARK_DIR = Path("benchmarks")
 RESULTS_FILE = Path("results/batch_results.csv")
 
 
