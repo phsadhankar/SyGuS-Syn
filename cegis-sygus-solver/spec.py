@@ -4,7 +4,7 @@ from typing import Any, Dict
 import z3
 
 from ast_nodes import Expr
-from sygus_parser import SyGuSBenchmark, SExpr
+from sygus_parser import SExpr, SyGuSBenchmark
 
 
 def spec_holds_on_example(
@@ -55,6 +55,14 @@ def eval_constraint(
 
         for arg in args[1:]:
             value -= int(eval_constraint(arg, bench, candidate, env))
+
+        return value
+
+    if op == "*":
+        value = 1
+
+        for arg in args:
+            value *= int(eval_constraint(arg, bench, candidate, env))
 
         return value
 
@@ -145,6 +153,14 @@ def constraint_to_z3(
 
         for a in zargs[1:]:
             result = result - a
+
+        return result
+
+    if op == "*":
+        result = z3.IntVal(1)
+
+        for a in zargs:
+            result = result * a
 
         return result
 

@@ -2,7 +2,26 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, List, Set
 
-from ast_nodes import Add, Const, Eq, Expr, Ge, Gt, Ite, Le, Lt, Sub, Var, BoolExpr
+from ast_nodes import (
+    Add,
+    And,
+    BoolExpr,
+    Const,
+    Eq,
+    Expr,
+    Ge,
+    Gt,
+    Implies,
+    Ite,
+    Le,
+    Lt,
+    Mul,
+    Neg,
+    Not,
+    Or,
+    Sub,
+    Var,
+)
 
 
 class BottomUpEnumerator:
@@ -33,20 +52,29 @@ class BottomUpEnumerator:
             i: [] for i in range(1, self.max_size + 1)
         }
 
-        base_exprs: List[Expr] = []
-
         for variable in self.variable_names:
-            base_exprs.append(Var(variable))
+            expr = Var(variable)
+
+            if self._add_expr(expr, exprs_by_size[1]):
+                yield expr
 
         for constant in self.constants:
-            base_exprs.append(Const(constant))
+            expr = Const(constant)
 
-        for expr in base_exprs:
             if self._add_expr(expr, exprs_by_size[1]):
                 yield expr
 
         for size in range(2, self.max_size + 1):
             self._build_bools_of_size(size, exprs_by_size, bools_by_size)
+
+            if "-" in self.int_ops:
+                child_size = size - 1
+
+                for child in exprs_by_size.get(child_size, []):
+                    candidate = Neg(child)
+
+                    if self._add_expr(candidate, exprs_by_size[size]):
+                        yield candidate
 
             for left_size in range(1, size):
                 right_size = size - 1 - left_size
@@ -64,6 +92,12 @@ class BottomUpEnumerator:
 
                         if "-" in self.int_ops:
                             candidate = Sub(left, right)
+
+                            if self._add_expr(candidate, exprs_by_size[size]):
+                                yield candidate
+
+                        if "*" in self.int_ops:
+                            candidate = Mul(left, right)
 
                             if self._add_expr(candidate, exprs_by_size[size]):
                                 yield candidate
@@ -117,6 +151,29 @@ class BottomUpEnumerator:
 
                     for candidate in candidates:
                         self._add_bool(candidate, bools_by_size[size])
+
+        if "not" in self.bool_ops:
+            child_size = size - 1
+
+            for child in bools_by_size.get(child_size, []):
+                self._add_bool(Not(child), bools_by_size[size])
+
+        for left_size in range(1, size):
+            right_size = size - 1 - left_size
+
+            if right_size < 1:
+                continue
+
+            for left in bools_by_size.get(left_size, []):
+                for right in bools_by_size.get(right_size, []):
+                    if "and" in self.bool_ops:
+                        self._add_bool(And(left, right), bools_by_size[size])
+
+                    if "or" in self.bool_ops:
+                        self._add_bool(Or(left, right), bools_by_size[size])
+
+                    if "=>" in self.bool_ops:
+                        self._add_bool(Implies(left, right), bools_by_size[size])
 
     def _add_expr(self, expr: Expr, bucket: List[Expr]) -> bool:
         key = str(expr)

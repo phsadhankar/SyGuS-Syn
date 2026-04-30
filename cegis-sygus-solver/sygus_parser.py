@@ -25,13 +25,16 @@ class SyGuSBenchmark:
 
 def tokenize(text: str) -> List[str]:
     clean_lines = []
+
     for line in text.splitlines():
         if ";" in line:
             line = line[: line.index(";")]
+
         clean_lines.append(line)
 
     text = "\n".join(clean_lines)
     text = text.replace("(", " ( ").replace(")", " ) ")
+
     return text.split()
 
 
@@ -91,6 +94,7 @@ def parse_text(text: str) -> SyGuSBenchmark:
         elif head == "declare-var" and len(cmd) >= 3:
             if cmd[2] != "Int":
                 raise ValueError("This minimal solver only supports Int variables.")
+
             bench.declared_vars.append(str(cmd[1]))
 
         elif head == "synth-fun":
@@ -109,10 +113,10 @@ def parse_text(text: str) -> SyGuSBenchmark:
         bench.constants = [0, 1]
 
     if not bench.int_ops:
-        bench.int_ops = {"+", "-", "ite"}
+        bench.int_ops = {"+", "-", "*", "ite"}
 
     if not bench.bool_ops:
-        bench.bool_ops = {">=", "<=", "=", ">", "<"}
+        bench.bool_ops = {">=", "<=", "=", ">", "<", "and", "or", "not", "=>"}
 
     return bench
 
@@ -121,6 +125,7 @@ def parse_synth_fun(cmd: List[SExpr], bench: SyGuSBenchmark) -> None:
     bench.synth_name = str(cmd[1])
 
     args = cmd[2]
+
     if not isinstance(args, list):
         raise ValueError("Unsupported synth-fun argument list.")
 
@@ -130,6 +135,7 @@ def parse_synth_fun(cmd: List[SExpr], bench: SyGuSBenchmark) -> None:
         if isinstance(arg, list) and len(arg) >= 2:
             if arg[1] != "Int":
                 raise ValueError("This minimal solver only supports Int synth-fun arguments.")
+
             bench.synth_args.append(str(arg[0]))
 
     return_type = cmd[3]
@@ -159,7 +165,7 @@ def extract_grammar(grammar: List[SExpr], bench: SyGuSBenchmark) -> None:
 
         op = prod[0]
 
-        if op in {"+", "-", "ite"}:
+        if op in {"+", "-", "*", "ite"}:
             int_ops.add(op)
 
         elif op in {">=", "<=", ">", "<", "="}:
@@ -184,5 +190,5 @@ def extract_grammar(grammar: List[SExpr], bench: SyGuSBenchmark) -> None:
             visit(prod)
 
     bench.constants = sorted(constants) if constants else [0, 1]
-    bench.int_ops = int_ops if int_ops else {"+", "-", "ite"}
-    bench.bool_ops = bool_ops if bool_ops else {">=", "<=", "=", ">", "<"}
+    bench.int_ops = int_ops if int_ops else {"+", "-", "*", "ite"}
+    bench.bool_ops = bool_ops if bool_ops else {">=", "<=", "=", ">", "<", "and", "or", "not", "=>"}
