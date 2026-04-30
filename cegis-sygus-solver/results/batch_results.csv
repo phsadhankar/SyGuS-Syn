@@ -1,0 +1,37 @@
+benchmark,status,solution,runtime,generated,checked,iterations,examples
+abs1_easy.sl,success,(ite (>= x 0) x (- x)),0.0534,751,2,2,3
+abs1_medium.sl,success,(ite (>= x 0) x (- x)),0.2775,9283,3,3,4
+abs1_noisy.sl,success,(ite (>= x 0) x (- x)),1.2641,63101,4,4,5
+abs_diff_easy.sl,success,(ite (>= x y) (- x y) (- y x)),13.2315,365413,3,3,7
+abs_diff_medium.sl,timeout_or_fail,,20.2826,753970,2,2,7
+abs_diff_noisy.sl,timeout_or_fail,,20.2539,854295,1,1,6
+clamp_nonnegative_easy.sl,success,(ite (>= x 0) x 0),0.0054,24,2,2,3
+clamp_nonnegative_medium.sl,success,(ite (>= x 0) x 0),0.0373,1721,2,2,3
+clamp_nonnegative_noisy.sl,success,(ite (>= x 0) x 0),0.1555,7978,2,2,3
+dec_easy.sl,success,(- x 1),0.0013,12,1,1,2
+dec_medium.sl,success,(- x 1),0.0013,15,1,1,2
+dec_noisy.sl,success,(- x 1),0.0015,18,1,1,2
+diff2_easy.sl,success,(- x y),0.0012,11,1,1,5
+diff2_medium.sl,success,(- x y),0.0014,16,1,1,5
+diff2_noisy.sl,success,(- x y),0.0017,19,1,1,5
+double_easy.sl,success,(+ x x),0.0011,3,1,1,2
+double_medium.sl,success,(+ x x),0.0012,10,1,1,2
+double_noisy.sl,success,(+ x x),0.0014,13,1,1,2
+inc_easy.sl,success,(+ x 1),0.0012,6,1,1,2
+inc_medium.sl,success,(+ x 1),0.0013,14,1,1,2
+inc_noisy.sl,success,(+ x 1),0.0015,17,1,1,2
+max2_easy.sl,success,(ite (>= x y) x y),0.0066,86,1,1,5
+max2_medium.sl,success,(ite (>= x y) x y),0.0951,3818,1,1,5
+max2_noisy.sl,success,(ite (>= x y) x y),0.3835,15157,1,1,5
+min2_easy.sl,success,(ite (>= x y) y x),0.0055,89,1,1,5
+min2_medium.sl,success,(ite (>= x y) y x),0.1688,3821,1,1,5
+min2_noisy.sl,success,(ite (>= x y) y x),0.2832,15161,1,1,5
+neg_easy.sl,success,(- x),0.0013,3,1,1,2
+neg_medium.sl,success,(- x),0.001,4,1,1,2
+neg_noisy.sl,success,(- x),0.001,5,1,1,2
+safe_sub_easy.sl,success,(- x (ite (>= x y) y x)),0.3409,8095,2,2,6
+safe_sub_medium.sl,success,(- x (ite (>= x y) y x)),2.3402,60562,3,3,7
+safe_sub_noisy.sl,success,(- x (ite (>= x y) y x)),11.5401,324322,3,3,7
+sum2_easy.sl,success,(+ x y),0.0029,5,1,1,5
+sum2_medium.sl,success,(+ x y),0.0073,15,1,1,5
+sum2_noisy.sl,success,(+ x y),0.0039,18,1,1,5

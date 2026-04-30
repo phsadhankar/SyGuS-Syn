@@ -1,3 +1,42 @@
 
 max2,True,(ite (>= x y) x y),0.0233,598,1,1,5,9
 abs1,True,(ite (>= x 0) x (- 0 x)),0.0914,2257,3,3,4,10
+max2,True,(ite (>= x y) x y),0.1685,3786,1,1,5,9
+abs1,True,(ite (>= x 0) x (- x)),0.0672,2389,3,3,4,10
+min2,True,(ite (>= x y) y x),0.2564,3789,1,1,5,9
+abs1,True,(ite (>= x 0) x (- x)),0.0529,751,2,2,3,10
+abs1,True,(ite (>= x 0) x (- x)),0.2750,9283,3,3,4,10
+abs1,True,(ite (>= x 0) x (- x)),1.2233,63101,4,4,5,10
+abs_diff,True,(ite (>= x y) (- x y) (- y x)),13.0848,365413,3,3,7,10
+abs_diff,False,,20.0001,753970,2,2,7,10
+abs_diff,False,,20.0001,854295,1,1,6,10
+clamp_nonnegative,True,(ite (>= x 0) x 0),0.0053,24,2,2,3,10
+clamp_nonnegative,True,(ite (>= x 0) x 0),0.0367,1721,2,2,3,10
+clamp_nonnegative,True,(ite (>= x 0) x 0),0.1538,7978,2,2,3,10
+dec,True,(- x 1),0.0011,12,1,1,2,10
+dec,True,(- x 1),0.0012,15,1,1,2,10
+dec,True,(- x 1),0.0013,18,1,1,2,10
+diff2,True,(- x y),0.0010,11,1,1,5,10
+diff2,True,(- x y),0.0013,16,1,1,5,10
+diff2,True,(- x y),0.0016,19,1,1,5,10
+double,True,(+ x x),0.0010,3,1,1,2,10
+double,True,(+ x x),0.0011,10,1,1,2,10
+double,True,(+ x x),0.0013,13,1,1,2,10
+inc,True,(+ x 1),0.0011,6,1,1,2,10
+inc,True,(+ x 1),0.0012,14,1,1,2,10
+inc,True,(+ x 1),0.0013,17,1,1,2,10
+max2,True,(ite (>= x y) x y),0.0065,86,1,1,5,10
+max2,True,(ite (>= x y) x y),0.0941,3818,1,1,5,10
+max2,True,(ite (>= x y) x y),0.3801,15157,1,1,5,10
+min2,True,(ite (>= x y) y x),0.0053,89,1,1,5,10
+min2,True,(ite (>= x y) y x),0.1677,3821,1,1,5,10
+min2,True,(ite (>= x y) y x),0.2798,15161,1,1,5,10
+neg,True,(- x),0.0012,3,1,1,2,10
+neg,True,(- x),0.0009,4,1,1,2,10
+neg,True,(- x),0.0009,5,1,1,2,10
+safe_sub,True,(- x (ite (>= x y) y x)),0.3369,8095,2,2,6,10
+safe_sub,True,(- x (ite (>= x y) y x)),2.3093,60562,3,3,7,10
+safe_sub,True,(- x (ite (>= x y) y x)),11.3507,324322,3,3,7,10
+sum2,True,(+ x y),0.0028,5,1,1,5,10
+sum2,True,(+ x y),0.0072,15,1,1,5,10
+sum2,True,(+ x y),0.0038,18,1,1,5,10
