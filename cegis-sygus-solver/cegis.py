@@ -1,48 +1,54 @@
+from __future__ import annotations
+
 import csv
 import os
 import time
 from typing import Dict, List, Optional
 
+from ast_nodes import Expr
 from evaluator import candidate_passes_examples
 from enumerator import BottomUpEnumerator
+from sygus_parser import SyGuSBenchmark
 from verifier import Z3Verifier
 
 
-def max2_spec(env: Dict[str, int], output: int) -> bool:
-    x = env["x"]
-    y = env["y"]
-
-    return output >= x and output >= y and (output == x or output == y)
-
-
 class CEGISSolver:
-    def __init__(self, max_size=7, timeout_seconds=30):
+    def __init__(
+        self,
+        benchmark: SyGuSBenchmark,
+        max_size: int = 9,
+        timeout_seconds: int = 30,
+    ):
+        self.benchmark = benchmark
         self.max_size = max_size
         self.timeout_seconds = timeout_seconds
-        self.examples: List[Dict[str, int]] = [
-            {"x": 0, "y": 0},
-            {"x": 0, "y": 1},
-            {"x": 1, "y": 0},
-        ]
 
-        self.iterations = 0
+        self.examples: List[Dict[str, int]] = self._initial_examples()
+
         self.generated_candidates = 0
-        self.checked_candidates = 0
-        self.start_time = None
+        self.z3_checked_candidates = 0
+        self.cegis_iterations = 0
+        self.start_time = 0.0
 
-    def solve_max2(self) -> Optional[str]:
+    def solve(self) -> Optional[Expr]:
         self.start_time = time.time()
 
         enumerator = BottomUpEnumerator(
-            variable_names=["x", "y"],
-            constants=[0, 1],
+            variable_names=self.benchmark.synth_args,
+            constants=self.benchmark.constants,
+            int_ops=self.benchmark.int_ops,
+            bool_ops=self.benchmark.bool_ops,
             max_size=self.max_size,
         )
 
-        verifier = Z3Verifier(variable_names=["x", "y"])
+        verifier = Z3Verifier(self.benchmark)
 
-        print("Starting CEGIS solver for max2(x, y)")
-        print("Initial examples:", self.examples)
+        print(f"Benchmark: {self.benchmark.synth_name}")
+        print(f"Variables: {self.benchmark.variable_names}")
+        print(f"Constants: {self.benchmark.constants}")
+        print(f"Int ops: {sorted(self.benchmark.int_ops)}")
+        print(f"Bool ops: {sorted(self.benchmark.bool_ops)}")
+        print(f"Initial examples: {self.examples}")
         print()
 
         for candidate in enumerator.enumerate():
@@ -50,32 +56,31 @@ class CEGISSolver:
 
             if time.time() - self.start_time > self.timeout_seconds:
                 print("Timeout reached.")
-                self.save_results(success=False, solution=None)
+                self._save_results(False, None)
                 return None
 
-            if not candidate_passes_examples(candidate, self.examples, max2_spec):
+            if not candidate_passes_examples(candidate, self.benchmark, self.examples):
                 continue
 
-            self.checked_candidates += 1
-            self.iterations += 1
+            self.z3_checked_candidates += 1
+            self.cegis_iterations += 1
 
-            print(f"CEGIS iteration {self.iterations}")
+            print(f"CEGIS iteration {self.cegis_iterations}")
             print(f"Candidate: {candidate}")
 
-            valid, counterexample = verifier.verify_max2(candidate)
+            valid, counterexample = verifier.verify(candidate)
 
             if valid:
-                runtime = time.time() - self.start_time
                 print()
                 print("Solution found!")
                 print(f"Synthesized expression: {candidate}")
-                print(f"Runtime: {runtime:.4f} seconds")
+                print(f"Runtime: {time.time() - self.start_time:.4f} seconds")
                 print(f"Candidates generated: {self.generated_candidates}")
-                print(f"Candidates checked by Z3: {self.checked_candidates}")
-                print(f"CEGIS iterations: {self.iterations}")
+                print(f"Candidates checked by Z3: {self.z3_checked_candidates}")
+                print(f"CEGIS iterations: {self.cegis_iterations}")
 
-                self.save_results(success=True, solution=str(candidate))
-                return str(candidate)
+                self._save_results(True, str(candidate))
+                return candidate
 
             print(f"Counterexample found: {counterexample}")
             print()
@@ -83,19 +88,47 @@ class CEGISSolver:
             if counterexample not in self.examples:
                 self.examples.append(counterexample)
 
-        print("No solution found within max expression size.")
-        self.save_results(success=False, solution=None)
+        print("No solution found within the chosen max expression size.")
+        self._save_results(False, None)
         return None
 
-    def save_results(self, success: bool, solution: Optional[str]):
+    def _initial_examples(self) -> List[Dict[str, int]]:
+        names = self.benchmark.variable_names
+        examples: List[Dict[str, int]] = []
+
+        if not names:
+            return [{}]
+
+        examples.append({name: 0 for name in names})
+
+        for i, name in enumerate(names):
+            env = {n: 0 for n in names}
+            env[name] = [-1, 0, 1][i % 3]
+
+            if env not in examples:
+                examples.append(env)
+
+        if len(names) == 2:
+            extra = [
+                {names[0]: 0, names[1]: 1},
+                {names[0]: 1, names[1]: 0},
+                {names[0]: -1, names[1]: 2},
+            ]
+
+            for env in extra:
+                if env not in examples:
+                    examples.append(env)
+
+        return examples
+
+    def _save_results(self, success: bool, solution: Optional[str]) -> None:
         os.makedirs("results", exist_ok=True)
 
-        file_path = "results/results.csv"
-        file_exists = os.path.exists(file_path)
+        path = "results/results.csv"
+        file_exists = os.path.exists(path)
+        runtime = time.time() - self.start_time
 
-        runtime = time.time() - self.start_time if self.start_time else 0
-
-        with open(file_path, mode="a", newline="") as file:
+        with open(path, "a", newline="", encoding="utf-8") as file:
             writer = csv.writer(file)
 
             if not file_exists:
@@ -112,13 +145,13 @@ class CEGISSolver:
                 ])
 
             writer.writerow([
-                "max2",
+                self.benchmark.synth_name,
                 success,
-                solution if solution else "",
+                solution or "",
                 f"{runtime:.4f}",
                 self.generated_candidates,
-                self.checked_candidates,
-                self.iterations,
+                self.z3_checked_candidates,
+                self.cegis_iterations,
                 len(self.examples),
                 self.max_size,
             ])
