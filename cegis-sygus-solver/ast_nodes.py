@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Dict, Set
 import z3
@@ -17,12 +19,23 @@ class Expr:
         raise NotImplementedError
 
 
+class BoolExpr:
+    def eval(self, env: Dict[str, int]) -> bool:
+        raise NotImplementedError
+
+    def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.BoolRef:
+        raise NotImplementedError
+
+    def size(self) -> int:
+        raise NotImplementedError
+
+
 @dataclass(frozen=True)
 class Var(Expr):
     name: str
 
     def eval(self, env: Dict[str, int]) -> int:
-        return env[self.name]
+        return int(env[self.name])
 
     def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.ArithRef:
         return z3_vars[self.name]
@@ -99,15 +112,48 @@ class Sub(Expr):
         return f"(- {self.left} {self.right})"
 
 
-class BoolExpr:
-    def eval(self, env: Dict[str, int]) -> bool:
-        raise NotImplementedError
+@dataclass(frozen=True)
+class Ite(Expr):
+    condition: BoolExpr
+    then_expr: Expr
+    else_expr: Expr
 
-    def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.BoolRef:
-        raise NotImplementedError
+    def eval(self, env: Dict[str, int]) -> int:
+        return self.then_expr.eval(env) if self.condition.eval(env) else self.else_expr.eval(env)
+
+    def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.ArithRef:
+        return z3.If(
+            self.condition.to_z3(z3_vars),
+            self.then_expr.to_z3(z3_vars),
+            self.else_expr.to_z3(z3_vars),
+        )
 
     def size(self) -> int:
-        raise NotImplementedError
+        return 1 + self.condition.size() + self.then_expr.size() + self.else_expr.size()
+
+    def vars(self) -> Set[str]:
+        return self.then_expr.vars() | self.else_expr.vars()
+
+    def __str__(self) -> str:
+        return f"(ite {self.condition} {self.then_expr} {self.else_expr})"
+
+
+@dataclass(frozen=True)
+class Eq(BoolExpr):
+    left: Expr
+    right: Expr
+
+    def eval(self, env: Dict[str, int]) -> bool:
+        return self.left.eval(env) == self.right.eval(env)
+
+    def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.BoolRef:
+        return self.left.to_z3(z3_vars) == self.right.to_z3(z3_vars)
+
+    def size(self) -> int:
+        return 1 + self.left.size() + self.right.size()
+
+    def __str__(self) -> str:
+        return f"(= {self.left} {self.right})"
 
 
 @dataclass(frozen=True)
@@ -147,64 +193,36 @@ class Le(BoolExpr):
 
 
 @dataclass(frozen=True)
-class Eq(BoolExpr):
+class Gt(BoolExpr):
     left: Expr
     right: Expr
 
     def eval(self, env: Dict[str, int]) -> bool:
-        return self.left.eval(env) == self.right.eval(env)
+        return self.left.eval(env) > self.right.eval(env)
 
     def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.BoolRef:
-        return self.left.to_z3(z3_vars) == self.right.to_z3(z3_vars)
+        return self.left.to_z3(z3_vars) > self.right.to_z3(z3_vars)
 
     def size(self) -> int:
         return 1 + self.left.size() + self.right.size()
 
     def __str__(self) -> str:
-        return f"(= {self.left} {self.right})"
+        return f"(> {self.left} {self.right})"
 
 
 @dataclass(frozen=True)
-class Or(BoolExpr):
-    left: BoolExpr
-    right: BoolExpr
+class Lt(BoolExpr):
+    left: Expr
+    right: Expr
 
     def eval(self, env: Dict[str, int]) -> bool:
-        return self.left.eval(env) or self.right.eval(env)
+        return self.left.eval(env) < self.right.eval(env)
 
     def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.BoolRef:
-        return z3.Or(self.left.to_z3(z3_vars), self.right.to_z3(z3_vars))
+        return self.left.to_z3(z3_vars) < self.right.to_z3(z3_vars)
 
     def size(self) -> int:
         return 1 + self.left.size() + self.right.size()
 
     def __str__(self) -> str:
-        return f"(or {self.left} {self.right})"
-
-
-@dataclass(frozen=True)
-class Ite(Expr):
-    condition: BoolExpr
-    then_expr: Expr
-    else_expr: Expr
-
-    def eval(self, env: Dict[str, int]) -> int:
-        if self.condition.eval(env):
-            return self.then_expr.eval(env)
-        return self.else_expr.eval(env)
-
-    def to_z3(self, z3_vars: Dict[str, z3.Int]) -> z3.ArithRef:
-        return z3.If(
-            self.condition.to_z3(z3_vars),
-            self.then_expr.to_z3(z3_vars),
-            self.else_expr.to_z3(z3_vars),
-        )
-
-    def size(self) -> int:
-        return 1 + self.condition.size() + self.then_expr.size() + self.else_expr.size()
-
-    def vars(self) -> Set[str]:
-        return self.then_expr.vars() | self.else_expr.vars()
-
-    def __str__(self) -> str:
-        return f"(ite {self.condition} {self.then_expr} {self.else_expr})"
+        return f"(< {self.left} {self.right})"
