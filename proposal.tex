@@ -1,0 +1,61 @@
+\documentclass[10pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\begin{document}
+
+\title{Project Proposal: A Minimal CEGIS-Based SyGuS Solver}
+\date{}
+\maketitle
+
+\section*{Introduction}
+
+This project proposes to reimplement a symbolic program synthesizer from scratch with the implementation’s focus on the Counterexample-Guided Inductive Synthesis (CEGIS) algorithm in its purest form. The synthesizer aims to solve Syntax-Guided Synthesis (SyGuS) problems. The goal of this project is to provide a baseline understanding of how search spaces in program synthesis are pruned using counterexamples.
+
+The system will consist of four main components: a front-end parser, a Bottom-Up Enumerative Search algorithm, a verifier, and the CEGIS loop.
+
+The front-end parser will read SyGuS input files (.sl format), extract the Context-Free Grammar (CFG) and logical specifications, and convert them into Abstract Syntax Trees (ASTs). These ASTs will serve as the internal representation of candidate expressions and constraints.
+
+The Bottom-Up Enumerative Search algorithm will systematically generate all valid expressions allowed by the provided grammar, ordered by expression depth or size. For every candidate expression $C$ and the set of counterexamples $E$, the algorithm evaluates whether $C(e)$ satisfies the specification for all $e \in E$. Candidates that satisfy all known counterexamples are passed to the verification stage.
+
+The verifier interacts with the Z3 SMT solver to check whether there exists an input where the candidate violates the specification. If Z3 finds a counterexample, the CEGIS loop incorporates the new constraint and restarts the search. This process continues until either a valid program is synthesized or a timeout is reached.
+
+The types of inputs anticipated follow the SyGuS format:
+
+\textbf{Grammar:} \texttt{Exp ::= x | y | 0 | 1}
+
+\textbf{Constraint:} 
+\texttt{(constraint (>= (max x y) x))}\\
+\texttt{(constraint (>= (max x y) y))}\\
+\texttt{(constraint (or (= (max x y) x) (= (max x y) y)))}
+
+\section*{System Architecture}
+
+The architecture of the synthesizer follows the standard CEGIS workflow:
+
+\begin{center}
+\texttt{SyGuS Input (.sl)} $\rightarrow$ 
+\texttt{Parser (CFG + Constraints)} $\rightarrow$ 
+\texttt{Bottom-Up Enumerator} $\rightarrow$ 
+\texttt{Verifier (Z3)} $\rightarrow$ 
+\texttt{CEGIS Loop}
+\end{center}
+
+The parser converts grammar and constraints into AST representations. The enumerator generates candidate programs consistent with the grammar. The verifier uses the Z3 SMT solver to detect counterexamples. These counterexamples refine the search space through the CEGIS loop until a valid solution is synthesized.
+
+\section*{Evaluation Metrics}
+
+The synthesizer will be evaluated using benchmarks from the SyGuS organization’s Linear Integer Arithmetic (LIA) track. Performance will be measured using the following metrics:
+
+\begin{itemize}
+\item \textbf{Synthesis Success Rate:} number of benchmarks successfully solved.
+\item \textbf{Execution Time:} time required to synthesize a valid program.
+\item \textbf{Number of Candidate Programs Generated:} measures efficiency of the enumerative search.
+\item \textbf{Number of CEGIS Iterations:} number of counterexample refinement cycles required.
+\end{itemize}
+
+These metrics will provide insight into the effectiveness of the CEGIS-based search and how efficiently counterexamples prune the synthesis search space.
+
+\end{document}
+
