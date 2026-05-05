@@ -10,7 +10,7 @@ def write_file(name, content):
     print(f"Created {path}")
 
 
-def grammar_one_var(constants="0 1", ops="+ - ite", bool_ops=">= <= = > <"):
+def build_int_ops(ops):
     int_ops = []
 
     if "+" in ops:
@@ -22,6 +22,10 @@ def grammar_one_var(constants="0 1", ops="+ - ite", bool_ops=">= <= = > <"):
     if "ite" in ops:
         int_ops.append("(ite StartBool Start Start)")
 
+    return "\n      ".join(int_ops)
+
+
+def build_bool_ops(bool_ops):
     bool_lines = []
 
     if ">=" in bool_ops:
@@ -35,52 +39,47 @@ def grammar_one_var(constants="0 1", ops="+ - ite", bool_ops=">= <= = > <"):
     if "=" in bool_ops:
         bool_lines.append("(= Start Start)")
 
+    return "\n      ".join(bool_lines)
+
+
+def grammar_one_var(constants="0 1", ops="+ - ite", bool_ops=">= <= = > <"):
     return f"""
   ((Start Int (
       x
       {constants}
-      {' '.join(int_ops)}
+      {build_int_ops(ops)}
   ))
   (StartBool Bool (
-      {' '.join(bool_lines)}
+      {build_bool_ops(bool_ops)}
   )))
 """
 
 
 def grammar_two_var(constants="0 1", ops="+ - ite", bool_ops=">= <= = > <"):
-    int_ops = []
-
-    if "+" in ops:
-        int_ops.append("(+ Start Start)")
-    if "-" in ops:
-        int_ops.append("(- Start Start)")
-    if "*" in ops:
-        int_ops.append("(* Start Start)")
-    if "ite" in ops:
-        int_ops.append("(ite StartBool Start Start)")
-
-    bool_lines = []
-
-    if ">=" in bool_ops:
-        bool_lines.append("(>= Start Start)")
-    if "<=" in bool_ops:
-        bool_lines.append("(<= Start Start)")
-    if ">" in bool_ops:
-        bool_lines.append("(> Start Start)")
-    if "<" in bool_ops:
-        bool_lines.append("(< Start Start)")
-    if "=" in bool_ops:
-        bool_lines.append("(= Start Start)")
-
     return f"""
   ((Start Int (
       x
       y
       {constants}
-      {' '.join(int_ops)}
+      {build_int_ops(ops)}
   ))
   (StartBool Bool (
-      {' '.join(bool_lines)}
+      {build_bool_ops(bool_ops)}
+  )))
+"""
+
+
+def grammar_three_var(constants="0 1", ops="+ - ite", bool_ops=">= <= = > <"):
+    return f"""
+  ((Start Int (
+      x
+      y
+      z
+      {constants}
+      {build_int_ops(ops)}
+  ))
+  (StartBool Bool (
+      {build_bool_ops(bool_ops)}
   )))
 """
 
@@ -134,8 +133,34 @@ def two_var_benchmark(
     write_file(fname, content)
 
 
+def three_var_benchmark(
+    fname,
+    synth_name,
+    constraints,
+    constants="0 1",
+    ops="+ - ite",
+    bool_ops=">= <= = > <",
+):
+    content = f"""
+(set-logic LIA)
+
+(synth-fun {synth_name} ((x Int) (y Int) (z Int)) Int
+{grammar_three_var(constants, ops, bool_ops)}
+)
+
+(declare-var x Int)
+(declare-var y Int)
+(declare-var z Int)
+
+{constraints}
+
+(check-synth)
+"""
+    write_file(fname, content)
+
+
 # -------------------------------------------------------------------
-# Original 12 function families
+# Original 17 function families
 # -------------------------------------------------------------------
 
 # 1. inc: x + 1
@@ -351,10 +376,6 @@ for variant, constants, ops in [
     )
 
 
-# -------------------------------------------------------------------
-# New 5 function families
-# -------------------------------------------------------------------
-
 # 13. is_zero_int: returns 1 if x = 0, else 0
 for variant, constants, ops in [
     ("easy", "0 1", "ite"),
@@ -446,7 +467,109 @@ for variant, constants, ops in [
     )
 
 
+# -------------------------------------------------------------------
+# New 5 function families
+# -------------------------------------------------------------------
+
+# 18. max3: max(x, y, z)
+for variant, constants, ops in [
+    ("easy", "0", "ite"),
+    ("medium", "0 1", "+ - ite"),
+    ("noisy", "0 1 2", "+ - * ite"),
+]:
+    three_var_benchmark(
+        f"max3_{variant}.sl",
+        "max3",
+        """
+(constraint (>= (max3 x y z) x))
+(constraint (>= (max3 x y z) y))
+(constraint (>= (max3 x y z) z))
+(constraint (or (= (max3 x y z) x) (or (= (max3 x y z) y) (= (max3 x y z) z))))
+""",
+        constants,
+        ops,
+    )
+
+
+# 19. min3: min(x, y, z)
+for variant, constants, ops in [
+    ("easy", "0", "ite"),
+    ("medium", "0 1", "+ - ite"),
+    ("noisy", "0 1 2", "+ - * ite"),
+]:
+    three_var_benchmark(
+        f"min3_{variant}.sl",
+        "min3",
+        """
+(constraint (<= (min3 x y z) x))
+(constraint (<= (min3 x y z) y))
+(constraint (<= (min3 x y z) z))
+(constraint (or (= (min3 x y z) x) (or (= (min3 x y z) y) (= (min3 x y z) z))))
+""",
+        constants,
+        ops,
+    )
+
+
+# 20. clamp_0_10: if x < 0 return 0, if x > 10 return 10, else x
+for variant, constants, ops in [
+    ("easy", "0 10", "ite"),
+    ("medium", "0 1 10", "+ - ite"),
+    ("noisy", "0 1 2 10", "+ - * ite"),
+]:
+    one_var_benchmark(
+        f"clamp_0_10_{variant}.sl",
+        "clamp_0_10",
+        """
+(constraint (>= (clamp_0_10 x) 0))
+(constraint (<= (clamp_0_10 x) 10))
+(constraint (=> (and (>= x 0) (<= x 10)) (= (clamp_0_10 x) x)))
+(constraint (=> (< x 0) (= (clamp_0_10 x) 0)))
+(constraint (=> (> x 10) (= (clamp_0_10 x) 10)))
+""",
+        constants,
+        ops,
+    )
+
+
+# 21. add_if_positive: if x > 0 then x+y else y
+for variant, constants, ops in [
+    ("easy", "0", "+ ite"),
+    ("medium", "0 1", "+ - ite"),
+    ("noisy", "0 1 2", "+ - * ite"),
+]:
+    two_var_benchmark(
+        f"add_if_positive_{variant}.sl",
+        "add_if_positive",
+        """
+(constraint (=> (> x 0) (= (add_if_positive x y) (+ x y))))
+(constraint (=> (<= x 0) (= (add_if_positive x y) y)))
+""",
+        constants,
+        ops,
+    )
+
+
+# 22. is_nonzero: returns 1 if x != 0, else 0
+for variant, constants, ops in [
+    ("easy", "0 1", "ite"),
+    ("medium", "0 1", "+ - ite"),
+    ("noisy", "0 1 2", "+ - * ite"),
+]:
+    one_var_benchmark(
+        f"is_nonzero_{variant}.sl",
+        "is_nonzero",
+        """
+(constraint (=> (= x 0) (= (is_nonzero x) 0)))
+(constraint (=> (not (= x 0)) (= (is_nonzero x) 1)))
+""",
+        constants,
+        ops,
+    )
+
+
 print()
-print("Done. Generated 51 benchmarks in benchmarks/")
-print("Function families: 17")
+print("Done. Generated 66 benchmarks in benchmarks/")
+print("Function families: 22")
 print("Variants per family: 3")
+print("If you keep abs.sl, max2.sl, and min2.sl, total benchmark files should be 69.")
